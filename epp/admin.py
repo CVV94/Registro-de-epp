@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp
+from .models import Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp, Configuracion
 
 # Register your models here.
-registered_models = [Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp]
+registered_models = [Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp, Configuracion]
 for model in registered_models:
     admin.site.register(model)

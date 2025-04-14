@@ -17,6 +17,7 @@ from reportlab.lib.units import inch
 from .forms import LogoForm
 from .models import Configuracion
 
+
 # Create your views here.
 
 def index(request):
@@ -222,3 +223,17 @@ def generar_pdf_trabajador(request, rut):
     p.showPage()
     p.save()
     return response
+def AsignacionLogo(request):
+    if request.method == 'POST':
+        form = LogoForm(request.POST, request.FILES)
+        if form.is_valid():
+            configuracion, created = Configuracion.objects.get_or_create(id=1)
+            configuracion.logo = form.cleaned_data['logo']
+            configuracion.save()
+            return redirect('home')
+    else:
+        form = LogoForm()
+
+    return render(request, 'home/cambiar_logo.html', {'form': form})
+
+
