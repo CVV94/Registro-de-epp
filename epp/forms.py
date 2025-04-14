@@ -1,5 +1,5 @@
 from django import forms
-from .models import Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp
+from .models import Categoria, Producto, Trabajador, AsignacionEpp, DevolucionEpp, Configuracion
 
 class AsignacionEppForm(forms.ModelForm):
     class Meta:
@@ -35,5 +35,13 @@ class AsignacionEppForm(forms.ModelForm):
             'producto': forms.Select(attrs={'class': 'form-control'}),
             'cantidad': forms.NumberInput(attrs={'class': 'form-control'}),
             'fecha_asignacion': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+class LogoForm(forms.ModelForm):
+    class Meta:
+        model = Configuracion
+        fields = ['logo']
+        widgets = {
+            'logo': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
         }
 

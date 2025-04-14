@@ -114,3 +114,10 @@ class DevolucionEpp(models.Model):
 
     def __str__(self):
         return f"Devolución de {self.cantidad} de {self.asignacion.producto}"
+    
+
+class Configuracion(models.Model):
+    logo = models.ImageField(upload_to='logos/', blank=True, null=True)
+
+    def __str__(self):
+        return "Configuración de la empresa"

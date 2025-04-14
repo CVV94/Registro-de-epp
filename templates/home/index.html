@@ -19,9 +19,10 @@
     </div>
 
     <!-- FILTRO -->
+
     <form method="get" class="mb-4">
         <div class="row g-2 align-items-end">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label for="trabajador" class="form-label">Filtrar por trabajador:</label>
                 <select name="trabajador" id="trabajador" class="form-select" onchange="this.form.submit()">
                     <option value="">-- Todos --</option>
@@ -32,8 +33,25 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="col-md-3">
+                <label for="desde" class="form-label">Desde:</label>
+                <input type="date" name="desde" id="desde" class="form-control" value="{{ fecha_desde }}">
+            </div>
+            <div class="col-md-3">
+                <label for="hasta" class="form-label">Hasta:</label>
+                <input type="date" name="hasta" id="hasta" class="form-control" value="{{ fecha_hasta }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
         </div>
     </form>
+
+    <a class="btn btn-danger"
+    href="{% if trabajador_id %}{% url 'informe_trabajador' trabajador_id %}?desde={{ request.GET.desde }}&hasta={{ request.GET.hasta }}{% else %}# {% endif %}"
+    {% if not trabajador_id or not request.GET.desde or not request.GET.hasta %}disabled{% endif %}>
+    Generar Informe PDF
+    </a>
 
     <h3>Asignaciones recientes</h3>
     <table class="table table-striped">

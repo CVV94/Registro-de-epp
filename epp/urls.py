@@ -16,5 +16,6 @@ urlpatterns = [
     path('eliminar_producto/<int:id>/', views.eliminar_producto, name='eliminar_producto'),
     path('listado_categorias/', views.listado_categorias, name='listado_categorias'),
     path('eliminar_categoria/<int:id>/', views.eliminar_categoria, name='eliminar_categoria'),
+    path('informe/trabajador/<str:rut>/', views.generar_pdf_trabajador, name='informe_trabajador'),
 
 ]
