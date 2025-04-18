@@ -15,7 +15,18 @@ from django.shortcuts import redirect, get_object_or_404
 from django.http import HttpResponse
 from reportlab.lib.units import inch
 from .forms import LogoForm
+
 from .models import Configuracion
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from django.http import HttpResponse
+from django.conf import settings
+from .models import Trabajador, AsignacionEpp, Configuracion
+from django.contrib import messages
+from datetime import date
+from reportlab.lib.units import inch
 
 
 # Create your views here.
@@ -150,78 +161,86 @@ def cambiar_logo(request):
 
 
 def generar_pdf_trabajador(request, rut):
-    # Validación: ¿Trabajador existe?
+    # Validación del trabajador
     try:
         trabajador = Trabajador.objects.get(rut=rut)
     except Trabajador.DoesNotExist:
         messages.error(request, 'Debe seleccionar un trabajador antes de generar el informe.')
         return redirect('home')
 
-    # Obtener la imagen del logo
+    # Ruta del logo
     configuracion = Configuracion.objects.first()
-    if configuracion and configuracion.logo:
-        logo_path = configuracion.logo.path
-    else:
-        # Si no hay logo cargado, usar el logo por defecto
-        logo_path = settings.BASE_DIR / 'static' / 'image' / 'orpak-logo.png'
+    logo_path = configuracion.logo.path if configuracion and configuracion.logo else settings.BASE_DIR / 'static' / 'image' / 'orpak-logo.png'
 
+    # Fechas
     fecha_desde = request.GET.get('desde')
     fecha_hasta = request.GET.get('hasta')
 
-    # Filtrar asignaciones por trabajador
+    # Filtrar asignaciones
     asignaciones = AsignacionEpp.objects.filter(trabajador=trabajador)
-
     if fecha_desde:
         asignaciones = asignaciones.filter(fecha_asignacion__gte=fecha_desde)
     if fecha_hasta:
         asignaciones = asignaciones.filter(fecha_asignacion__lte=fecha_hasta)
 
-    # Generación del PDF
+    # Preparar respuesta
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="informe_{trabajador.rut}.pdf"'
 
-    p = canvas.Canvas(response, pagesize=letter)
-    width, height = letter
+    # Documento PDF
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=40, bottomMargin=30)
+    elements = []
+    styles = getSampleStyleSheet()
 
-    # Usar la imagen del logo (si está disponible)
-    p.drawImage(logo_path, inch, height - 0.9 * inch, width=1.5 * inch, height=0.8 * inch)
+    # Encabezado: Logo + Título en una fila
+    logo = Image(str(logo_path), width=80, height=40)
+    titulo = Paragraph("<b>REGISTRO ENTREGA Y/O CAMBIO DE EPP</b>", styles['Title'])
 
-    p.setFont("Helvetica-Bold", 16)
-    p.drawCentredString(width / 2, height - inch, "Entrega y/o Cambio de EPP")
+    encabezado = Table([[logo, titulo]], colWidths=[100, 400])
+    encabezado.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    elements.append(encabezado)
+    elements.append(Spacer(1, 12))
 
-    p.setFont("Helvetica", 12)
-    p.drawString(inch, height - 1.5 * inch, f"Nombre: {trabajador.nombre} {trabajador.apellido}")
-    p.drawString(inch, height - 1.8 * inch, f"RUT: {trabajador.rut}")
-    p.drawString(inch, height - 2.1 * inch, f"Fecha: {date.today().strftime('%d-%m-%Y')}")
+    # Datos del trabajador
+    elements.append(Paragraph(f"<b>NOMBRE:</b> {trabajador.nombre} {trabajador.apellido}", styles['Normal']))
+    elements.append(Paragraph(f"<b>RUT:</b> {trabajador.rut}", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    y = height - 2.6 * inch
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(inch, y, "Fecha")
-    p.drawString(2 * inch, y, "Producto")
-    p.drawString(3.8 * inch, y, "Talla")
-    p.drawString(4.6 * inch, y, "Cantidad")
-    p.drawString(5.4 * inch, y, "Categoría")
-    p.drawString(6.8 * inch, y, "Firma")
+    # Encabezados de tabla
+    data = [
+        ["CANTIDAD", "ELEMENTO ENTREGADO", "MARCA", "MODELO", "FECHA ENTREGA", "FIRMA"]
+    ]
 
-    y -= 15
-    p.setFont("Helvetica", 10)
+    # Llenado de la tabla
+    for asignacion in asignaciones:
+        producto = asignacion.producto
+        data.append([
+            str(asignacion.cantidad),
+            producto.nombre,
+            getattr(producto, 'marca', ''),  # En caso de que no tenga marca o modelo definidos
+            getattr(producto, 'modelo', ''),
+            asignacion.fecha_asignacion.strftime('%d-%m-%Y'),
+            " " * 20  # Espacio para firma
+        ])
 
-    for a in asignaciones:
-        if y < inch:
-            p.showPage()
-            y = height - inch
-            p.setFont("Helvetica", 10)
+    # Tabla de entregas
+    table = Table(data, colWidths=[1*inch, 2*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
 
-        p.drawString(inch, y, a.fecha_asignacion.strftime('%d-%m-%Y'))
-        p.drawString(2 * inch, y, str(a.producto.nombre))
-        p.drawString(3.8 * inch, y, str(a.producto.talla))
-        p.drawString(4.6 * inch, y, str(a.cantidad))
-        p.drawString(5.4 * inch, y, str(a.producto.categoria.nombre))
-        p.drawString(6.8 * inch, y, "______________")
-        y -= 15
+    elements.append(table)
+    doc.build(elements)
 
-    p.showPage()
-    p.save()
     return response
 def AsignacionLogo(request):
     if request.method == 'POST':
